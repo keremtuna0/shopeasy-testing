@@ -38,35 +38,76 @@ import static org.assertj.core.api.Assertions.*;
  */
 class ShopEasyPropertyTest {
 
-    // -----------------------------------------------------------------------
-    // TODO: Write your properties below.
-    //
-    // EXAMPLE STRUCTURE:
-    //
-    // /**
-    //  * Property: The final price is always non-negative.
-    //  * Bug class caught: any implementation path that produces a negative result
-    //  *                   (e.g., discount > 100 applied to negative base).
-    //  */
-    // @Property
-    // void finalPriceIsNeverNegative(
-    //         @ForAll @DoubleRange(min = 0, max = 10_000) double base,
-    //         @ForAll @DoubleRange(min = 0, max = 100)   double discount,
-    //         @ForAll @DoubleRange(min = 0, max = 100)   double tax) {
-    //
-    //     PriceCalculator calc = new PriceCalculator();
-    //     double result = calc.calculate(base, discount, tax);
-    //     assertThat(result).isGreaterThanOrEqualTo(0.0);
-    // }
-    //
-    // // Custom provider example:
-    // @Provide
-    // Arbitrary<Product> validProducts() {
-    //     return Combinators.combine(
-    //             Arbitraries.strings().alpha().ofMinLength(1).ofMaxLength(5),
-    //             Arbitraries.doubles().between(0.01, 500.0)
-    //     ).as((name, price) -> new Product("P-" + name, name, price, 100));
-    // }
-    // -----------------------------------------------------------------------
+    // identity: indirim ve vergi 0 ise fiyat base ile ayni olmali
+    // bug: formul yanlis yazilirsa base donmez
+    @Property
+    void identityNoDiscountNoTax(
+            @ForAll @DoubleRange(min = 0, max = 5000) double base) {
+        PriceCalculator calc = new PriceCalculator();
+        double result = calc.calculate(base, 0, 0);
+        assertThat(result).isCloseTo(base, within(0.001));
+    }
+
+    // monotonicity: indirim artinca fiyat dusmeli veya esit kalmali
+    // bug: indirim ters uygulanirsa yuksek indirimde fiyat artabilir
+    @Property
+    void discountMonotonic(
+            @ForAll @DoubleRange(min = 0, max = 2000) double base,
+            @ForAll @DoubleRange(min = 0, max = 100) double disc1,
+            @ForAll @DoubleRange(min = 0, max = 100) double disc2,
+            @ForAll @DoubleRange(min = 0, max = 100) double tax) {
+        Assume.that(disc1 <= disc2);
+
+        PriceCalculator calc = new PriceCalculator();
+        double price1 = calc.calculate(base, disc1, tax);
+        double price2 = calc.calculate(base, disc2, tax);
+        assertThat(price1).isGreaterThanOrEqualTo(price2);
+    }
+
+    // boundedness: sonuc 0 ile ust sinir arasinda
+    // bug: negatif fiyat veya cok buyuk hatali sonuc
+    @Property
+    void resultIsBounded(
+            @ForAll @DoubleRange(min = 0, max = 3000) double base,
+            @ForAll @DoubleRange(min = 0, max = 100) double discount,
+            @ForAll @DoubleRange(min = 0, max = 100) double tax) {
+        PriceCalculator calc = new PriceCalculator();
+        double result = calc.calculate(base, discount, tax);
+        double maxPossible = base * (1 + tax / 100.0);
+
+        assertThat(result).isGreaterThanOrEqualTo(0);
+        assertThat(result).isLessThanOrEqualTo(maxPossible + 0.01);
+    }
+
+    // cart commutativity: A sonra B = B sonra A
+    // bug: ekleme sirasi totali degistiriyorsa
+    @Property
+    void cartOrderDoesNotMatter(
+            @ForAll("products") Product p1,
+            @ForAll("products") Product p2,
+            @ForAll @IntRange(min = 1, max = 5) int qty1,
+            @ForAll @IntRange(min = 1, max = 5) int qty2) {
+        Assume.that(!p1.getId().equals(p2.getId()));
+
+        ShoppingCart cartAB = new ShoppingCart();
+        cartAB.addItem(p1, qty1);
+        cartAB.addItem(p2, qty2);
+
+        ShoppingCart cartBA = new ShoppingCart();
+        cartBA.addItem(p2, qty2);
+        cartBA.addItem(p1, qty1);
+
+        assertThat(cartAB.total()).isCloseTo(cartBA.total(), within(0.001));
+    }
+
+    @Provide
+    Arbitrary<Product> products() {
+        return Arbitraries.of(
+                new Product("PX1", "Elma", 2.5, 20),
+                new Product("PX2", "Ekmek", 5.0, 30),
+                new Product("PX3", "Su", 1.0, 100),
+                new Product("PX4", "Kitap", 45.0, 10)
+        );
+    }
 
 }
