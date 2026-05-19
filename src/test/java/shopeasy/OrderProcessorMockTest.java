@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -58,25 +59,63 @@ class OrderProcessorMockTest {
         widget = new Product("P001", "Widget", 25.0, 100);
     }
 
-    // -----------------------------------------------------------------------
-    // TODO: Write your mock-based tests below.
-    //
-    // EXAMPLE STRUCTURE — happy path:
-    //
-    // @Test
-    // void process_inventoryOkAndPaymentOk_returnsOrder() {
-    //     cart.addItem(widget, 2);
-    //
-    //     when(inventoryService.isAvailable(widget, 2)).thenReturn(true);
-    //     when(paymentGateway.charge("customer-1", 50.0)).thenReturn(true);
-    //
-    //     Order order = orderProcessor.process("customer-1", cart);
-    //
-    //     assertThat(order).isNotNull();
-    //     assertThat(order.getCustomerId()).isEqualTo("customer-1");
-    //     assertThat(order.getTotal()).isEqualTo(50.0);
-    //     verify(paymentGateway).charge("customer-1", 50.0);
-    // }
-    // -----------------------------------------------------------------------
+    // 1) happy path - stok tamam odeme tamam
+    @Test
+    void happyPath() {
+        cart.addItem(widget, 2);
+
+        when(inventoryService.isAvailable(widget, 2)).thenReturn(true);
+        when(paymentGateway.charge(eq("kerem-1"), eq(50.0))).thenReturn(true);
+
+        Order order = orderProcessor.process("kerem-1", cart);
+
+        assertThat(order).isNotNull();
+        assertThat(order.getCustomerId()).isEqualTo("kerem-1");
+        assertThat(order.getTotal()).isEqualTo(50.0);
+        verify(inventoryService).isAvailable(widget, 2);
+        verify(paymentGateway).charge("kerem-1", 50.0);
+    }
+
+    // 2) inventory failure - stok yok, charge cagrilmamali
+    @Test
+    void inventoryFail() {
+        cart.addItem(widget, 1);
+        when(inventoryService.isAvailable(widget, 1)).thenReturn(false);
+
+        Order result = orderProcessor.process("kerem-1", cart);
+
+        assertThat(result).isNull();
+        verify(paymentGateway, never()).charge(any(), anyDouble());
+    }
+
+    // 3) payment failure
+    @Test
+    void paymentFail() {
+        cart.addItem(widget, 1);
+
+        when(inventoryService.isAvailable(widget, 1)).thenReturn(true);
+        when(paymentGateway.charge("kerem-1", 25.0)).thenReturn(false);
+
+        Order result = orderProcessor.process("kerem-1", cart);
+
+        assertThat(result).isNull();
+        verify(paymentGateway).charge("kerem-1", 25.0);
+    }
+
+    // 4) partial quantity
+    // OrderProcessor tam miktar ister: 5 adet istenince isAvailable(widget,5) false ise null doner
+    // kismi teslim yok, siparis iptal
+    @Test
+    void partialQtyNotEnoughStock() {
+        cart.addItem(widget, 5);
+
+        when(inventoryService.isAvailable(widget, 5)).thenReturn(false);
+
+        Order result = orderProcessor.process("x99", cart);
+
+        assertThat(result).isNull();
+        verify(paymentGateway, never()).charge(anyString(), anyDouble());
+        verify(inventoryService).isAvailable(widget, 5);
+    }
 
 }
