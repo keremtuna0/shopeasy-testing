@@ -48,12 +48,111 @@ class ShoppingCartStructuralTest {
         banana = new Product("P002", "Banana", 0.80, 50);
     }
 
-    // -----------------------------------------------------------------------
-    // TODO: Write your tests below.
-    //
-    // Start with happy-path tests, then add tests that target specific branches.
-    //
-    // HINT: Run `mvn test` after every few tests to see coverage progress.
-    // -----------------------------------------------------------------------
+    // bos sepet total
+    @Test
+    void emptyCart() {
+        assertThat(cart.total()).isEqualTo(0);
+        assertThat(cart.itemCount()).isEqualTo(0);
+    }
+
+    // addItem - yeni urun branch
+    @Test
+    void addNewProduct() {
+        cart.addItem(apple, 2);
+        assertThat(cart.itemCount()).isEqualTo(1);
+        assertThat(cart.total()).isEqualTo(3.0);
+    }
+
+    // addItem - urun zaten var branch
+    @Test
+    void addSameProductTwice() {
+        cart.addItem(apple, 1);
+        cart.addItem(apple, 2);
+        assertThat(cart.itemCount()).isEqualTo(1);
+        assertThat(cart.total()).isEqualTo(4.5);
+    }
+
+    @Test
+    void twoDifferentProducts() {
+        cart.addItem(apple, 1);
+        cart.addItem(banana, 1);
+        assertThat(cart.itemCount()).isEqualTo(2);
+        assertThat(cart.total()).isCloseTo(2.3, within(0.01));
+    }
+
+    // removeItem bulundu
+    @Test
+    void removeItem() {
+        cart.addItem(apple, 1);
+        cart.removeItem("P001");
+        assertThat(cart.itemCount()).isEqualTo(0);
+    }
+
+    // removeItem yok - hicbir sey olmamali
+    @Test
+    void removeItemNotInCart() {
+        cart.addItem(apple, 1);
+        cart.removeItem("XXX");
+        assertThat(cart.itemCount()).isEqualTo(1);
+    }
+
+    // updateQuantity ok
+    @Test
+    void updateQty() {
+        cart.addItem(banana, 1);
+        cart.updateQuantity("P002", 3);
+        assertThat(cart.total()).isCloseTo(2.4, within(0.01));
+    }
+
+    // updateQuantity quantity <= 0
+    @Test
+    void updateQtyInvalid() {
+        cart.addItem(apple, 1);
+        assertThatThrownBy(() -> cart.updateQuantity("P001", 0))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // updateQuantity urun yok - bos sepet
+    @Test
+    void updateQtyNotFound() {
+        assertThatThrownBy(() -> cart.updateQuantity("P999", 1))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // sepet dolu ama yanlis id (loop icinde eslesmeyen branch)
+    @Test
+    void updateQtyWrongId() {
+        cart.addItem(apple, 1);
+        assertThatThrownBy(() -> cart.updateQuantity("P002", 2))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // applyDiscount 0
+    @Test
+    void discountZero() {
+        cart.addItem(apple, 2);
+        assertThat(cart.applyDiscount(0)).isEqualTo(3.0);
+    }
+
+    // applyDiscount > 0
+    @Test
+    void discountTenPercent() {
+        cart.addItem(apple, 2);
+        assertThat(cart.applyDiscount(10)).isCloseTo(2.7, within(0.01));
+    }
+
+    @Test
+    void clearCart() {
+        cart.addItem(apple, 1);
+        cart.clear();
+        assertThat(cart.total()).isEqualTo(0);
+    }
+
+    @Test
+    void getItemsAndToString() {
+        cart.addItem(apple, 1);
+        assertThat(cart.getItems()).hasSize(1);
+        assertThat(cart.toString()).contains("ShoppingCart");
+    }
 
 }
