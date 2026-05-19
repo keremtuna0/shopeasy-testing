@@ -109,25 +109,23 @@ class PriceCalculatorSpecTest {
         assertThat(result).isCloseTo(10450.0, within(1.0));
     }
 
-    // invalid partition - negatif base (kod simdilik hata vermiyor task3te assert var)
+    // invalid partition - task3 assert ile AssertionError
     @Test
     void invalidNegativeBase() {
-        double r = calculator.calculate(-100, 0, 0);
-        assertThat(r).isLessThan(0);
+        assertThatThrownBy(() -> calculator.calculate(-100, 0, 0))
+                .isInstanceOf(AssertionError.class);
     }
 
-    // invalid partition discount > 100
     @Test
     void invalidDiscountTooHigh() {
-        double r = calculator.calculate(100, 110, 0);
-        assertThat(r).isLessThan(0);
+        assertThatThrownBy(() -> calculator.calculate(100, 110, 0))
+                .isInstanceOf(AssertionError.class);
     }
 
-    // invalid tax negatif
     @Test
     void invalidNegativeTax() {
-        double r = calculator.calculate(100, 0, -10);
-        assertThat(r).isLessThan(100); // vergi negatif olunca dusuyor
+        assertThatThrownBy(() -> calculator.calculate(100, 0, -10))
+                .isInstanceOf(AssertionError.class);
     }
 
     // parameterized - birkac normal deger + off point
