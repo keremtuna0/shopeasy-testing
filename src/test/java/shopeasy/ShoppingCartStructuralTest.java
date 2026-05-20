@@ -127,6 +127,23 @@ class ShoppingCartStructuralTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    // PIT bonus: qty 0 + wrong id — mutant (< 0) skips cart check, throws "not found" instead
+    @Test
+    void updateQtyZeroWrongProduct() {
+        cart.addItem(apple, 1);
+        assertThatThrownBy(() -> cart.updateQuantity("P999", 0))
+                .hasMessageContaining("Quantity must be > 0");
+    }
+
+    // PIT bonus: CartItem.setQuantity boundary — direct call with qty 0
+    @Test
+    void cartItemRejectsZeroQuantity() {
+        CartItem item = new CartItem(apple, 1);
+        assertThatThrownBy(() -> item.setQuantity(0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Quantity must be > 0");
+    }
+
     // applyDiscount 0
     @Test
     void discountZero() {
